@@ -10,7 +10,7 @@ const path = require("node:path");
 const { test } = require("node:test");
 const { chromium, webkit } = require("playwright");
 
-const assets = path.resolve(__dirname, "../assets");
+const assets = process.env.MAGPIE_ASSETS || path.resolve(__dirname, "../assets");
 const now = Date.now();
 const iso = (ms) => new Date(ms).toISOString();
 const accts = [
@@ -22,7 +22,7 @@ const route = {
   order: accts, tries: [{ id: "acct-1", model: "gpt-6", start: iso(now - 2000), done: true, ms: 800, status: 200 }],
 };
 
-function serve(lang, left) {
+function serve(lang, left, currentRoute = route, quotas = []) {
   const state = { agents: [{ id: "codex", name: "Codex", path: "/test/codex", fields: [] }], profiles: [], settings: { lang, theme: "light", quotaLeft: left } };
   return async (r) => {
     const url = new URL(r.request().url());
@@ -32,8 +32,9 @@ function serve(lang, left) {
     if (url.pathname === "/api/state") return json(state);
     if (url.pathname === "/api/gateway/trace") {
       if (url.searchParams.get("wait")) return new Promise(() => {}); // nothing more comes
-      return json({ mine: true, now: new Date().toISOString(), seq: 7, totals: { requests: 1, rerouted: 0, errors: 0 }, routes: [route] });
+      return json({ mine: true, now: new Date().toISOString(), seq: 7, totals: { requests: 1, rerouted: 0, errors: 0 }, routes: [currentRoute] });
     }
+    if (url.pathname === "/api/usage/quotas") return json(quotas);
     if (url.pathname === "/api/gateway/history") return json({ cut: false, days: [], routes: [] });
     if (url.pathname === "/api/groups") return json({ models: [], groups: [], pools: [] });
     if (url.pathname === "/api/providers") return json({ providers: [], excluded: [], gateway: { running: true, window: true, url: "http://127.0.0.1:3999" } });
@@ -42,6 +43,37 @@ function serve(lang, left) {
     const contentType = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" }[path.extname(file)];
     await r.fulfill({ body: await fs.readFile(file), contentType });
   };
+}
+
+for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium", "webkit"])) {
+  for (const lang of ["en", "zh", "zh-TW", "ja", "de"]) {
+    test(`${engine} ${lang}: agy-cli Hydrogen shows Gemini's allowance on the Routing stage`, async (t) => {
+      const browser = await (engine === "webkit" ? webkit.launch() : chromium.launch({ channel: "chromium" }));
+      t.after(() => browser.close());
+      const page = await browser.newPage({ viewport: { width: 1100, height: 760 }, reducedMotion: "reduce" });
+      page.setDefaultTimeout(10000);
+      page.setDefaultNavigationTimeout(60000);
+      const model = "gemini-4-hydrogen";
+      const agy = { id: "agy", kind: "account", provider: "agy-cli", who: "agy@example.com", model, known: false };
+      const active = { ...route, model: `auto/${model}`, order: [agy, { ...accts[0], model }], tries: route.tries.map((tr) => ({ ...tr, model })) };
+      const shared = [model, model + "-xhigh", "gemini-3.8-flash"];
+      const windows = [
+        { name: "Gemini 4 Argon · 7 days", used: 78, displayModels: ["gemini-4-argon"] },
+        { name: "Gemini · 7 days", used: 4, displayModels: shared },
+        { name: "Gemini · 5 hours", used: 2, displayModels: shared },
+        { name: "Claude & GPT · 7 days", used: 47, displayModels: ["claude-opus-5-5"] },
+      ];
+      await page.route("**/*", serve(lang, true, active, [{ provider: agy.provider, user: agy.who, windows }]));
+      await page.goto("http://magpie.test/?view=routing");
+      const seat = page.locator("li", { has: page.locator(".who", { hasText: agy.who }) }).first();
+      const status = seat.locator("em");
+      await status.filter({ hasText: "96%" }).waitFor();
+      const tip = await seat.getAttribute("title");
+      assert.match(tip, /96%/);
+      assert.match(tip, /98%/);
+      assert.doesNotMatch(tip, /Argon|53%|22%/);
+    });
+  }
 }
 
 const words = {

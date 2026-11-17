@@ -84,6 +84,9 @@ type QuotaWindow struct {
 	// on it, for the GUI to show the group's windows in place of its
 	// models'.
 	Pool string `json:"pool,omitempty"`
+	// DisplayModels names the models of a measured plugin window set aside
+	// from routing. The Routing page can show it beside the models it counts.
+	DisplayModels []string `json:"displayModels,omitempty"`
 
 	// For routing (see Allowances): how long the window runs, zero when
 	// not known; the only models it counts, by a word in their ids

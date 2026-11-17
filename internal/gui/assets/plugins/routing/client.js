@@ -3247,6 +3247,7 @@ function routingPage(part) {
       // the session it answers or answered, by its title, so which one
       // has the account shows (connor_yang on Discord): the request's
       // own, not each request's words
+      const windows = day ? [] : winsOf(w, w.model);
       let s, b, named = "";
       if (w.unlisted) s = unlistedWord(w);
       else if (resting) s = restSay(rest);
@@ -3288,7 +3289,7 @@ function routingPage(part) {
           : b === "expires" && soon ? quota(w, "{n} used · renews in {d} · one whose credits expire sooner goes first", "{n} left · renews in {d} · one whose credits expire sooner goes first", { d: dur(soon - n) })
           : b === "sooner" ? quota(w, "{n} used · one renewing sooner goes first", "{n} left · one renewing sooner goes first")
           : soon ? quota(w, "{n} used · renews in {d}", "{n} left · renews in {d}", { d: dur(soon - n) }) : quota(w, "{n} used", "{n} left");
-      } else if (w.kind === "account") s = (!day && winsOf(w)[0]) || (!day && cardError(w) ? t("Allowance unavailable — hover for why") : t("what's left not known yet"));
+      } else if (w.kind === "account") s = windows[0] || (!day && cardError(w) ? t("Allowance unavailable — hover for why") : t("what's left not known yet"));
       else if (w.routing === "usage") s = t("{n} tokens lately", { n: tokens(w.tokens || 0) });
       else if (w.aside) s = t("{api} only · after the others", { api: API[w.speaks] || w.speaks || t("any API") });
       else if (w.speaks) s = t("{api} only", { api: API[w.speaks] || w.speaks });
@@ -3315,7 +3316,7 @@ function routingPage(part) {
       // (#1835): the row says the fullest one while idle and what it is
       // doing while it answers, and a second line on every seat would
       // crowd the stage. Live only, as the list's are (winsOf).
-      const tip = [w.id, ...(day ? [] : [...winsOf(w), cardError(w)].filter(Boolean))].join("\n");
+      const tip = [w.id, ...(day ? [] : [...windows, cardError(w)].filter(Boolean))].join("\n");
       if (row.li.title !== tip) row.li.title = tip;
       const bar = w.known && !w.free && w.balance == null;
       row.li.classList.toggle("nobar", !bar);
@@ -5025,21 +5026,27 @@ function routingPage(part) {
   }
   // winsOf: each of an account's windows, as the Usage page's card names
   // it: "5 hours 40% used · resets in 2h"
-  function winsOf(w) {
-    return winParts(w).map((p) => p.text);
+  function winsOf(w, model) {
+    return winParts(w, model).map((p) => p.text);
   }
   // winParts: the same windows in parts, for the accounts' list to lay out
   // alike on every row (zwm_vincent on X: one row said its 5 hours, the
   // next its week): the window's short name, what is used or left, and
   // when it resets
-  function winParts(w) {
+  function winParts(w, model) {
     const q = cardOf(w);
-    return q ? (familyWindows(q.windows) || []).map((x) => {
+    if (!q) return [];
+    // On the stage each row is for one model. A plugin can report separate
+    // allowances for it and for other models without weighing them in routing.
+    const windows = model && q.windows.some((x) => x.displayModels?.length)
+      ? q.windows.filter((x) => x.displayModels?.some((id) => id.toLowerCase() === model.toLowerCase()))
+      : q.windows;
+    return familyWindows(windows).map((x) => {
       const at = x.resetsAt ? new Date(x.resetsAt) : null, v = quotaText(x);
       return { x, q, k: shortWindow(x.name), v, r: at ? resetInText(at) : "",
         text: t(x.name) + " " + v + (at ? " · " + resetInText(at) : ""),
         tip: t(x.name) + " " + v + (at ? " · " + resetText(at) : "") };
-    }) : [];
+    });
   }
 
   // remoteWinsOf: the windows of the accounts signed in on another

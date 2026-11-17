@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -230,6 +231,9 @@ func quotaOfPlugin(q SubscriptionQuota, u plugin.Usage) SubscriptionQuota {
 		}
 		if set := idSetOf(x.Models); set != nil {
 			w.matches = set.has
+			if w.Aside && !w.Text && used != nil {
+				w.DisplayModels = slices.Clone(x.Models)
+			}
 		} else if set := idSetOf(x.NotModels); set != nil {
 			w.matches = func(model string) bool { return !set.has(model) }
 		}

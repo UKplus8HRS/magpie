@@ -1,15 +1,8 @@
 package usage
 
-// A subscription's calls at its plan's equivalent price (provider.PlanCost)
-// beside the official one. A plan's quota is a week's, so its calls are
-// summed by week as the summary counts them: the first quota's worth of a
-// week's API cost is at the plan's k, the rest past it at the official
-// price. magpie reads no per-call sign that a call was billed from credits
-// or pay as you go past a plan (Record.Credits is a plan's own credits,
-// not overage), so the week's running sum is what tells overage apart. A
-// week starts on Monday at 00:00 in the summary's zone; a period that
-// starts mid-week counts the calls of that week before it first
-// (seedPlanWeeks), so a "Today" past the quota is past it.
+// Calls priced on a plan consume a share of one weekly allowance per
+// provider. Each model has its own API USD value for the full allowance.
+// Record.Credits gives plan credit units, so it cannot identify overage.
 
 import (
 	"time"
@@ -37,8 +30,7 @@ func (t *Totals) addPlan(r Record, pr *catalog.Price, p planShare) {
 	}
 }
 
-// planWeeks is the API cost each plan's calls ran up in each week so far,
-// by provider and the week's Monday.
+// planWeeks is the fraction used, by provider and the week's Monday.
 type planWeeks map[string]float64
 
 // weekStart is the Monday 00:00 of t's week, in t's zone.
@@ -55,7 +47,7 @@ func planWeekKey(prov string, t time.Time) string {
 func planPrices() map[string]*provider.PlanPrice {
 	out := map[string]*provider.PlanPrice{}
 	for _, p := range provider.All() {
-		if p.Plan != nil && p.Plan.Factor() != 1 {
+		if p.Plan != nil {
 			out[p.ID] = p.Plan
 		}
 	}
@@ -70,15 +62,22 @@ func (w planWeeks) share(plans map[string]*provider.PlanPrice, r Record, pr *cat
 	if plan == nil || pr == nil || r.Input+r.Output == 0 {
 		return planShare{}
 	}
+	model := r.Served
+	if model == "" {
+		model = r.Model
+	}
+	if _, quota := plan.Weekly(model); quota <= 0 {
+		return planShare{}
+	}
 	api := r.CostAt(*pr)
 	k := planWeekKey(r.Provider, r.Time.In(loc))
 	used := w[k]
-	w[k] = used + api
-	return planShare{cost: provider.PlanCost(plan, api, used), api: api, on: true}
+	cost, fraction := provider.PlanCost(plan, model, api, used)
+	w[k] = min(1, used+fraction)
+	return planShare{cost: cost, api: api, on: true}
 }
 
-// seedPlanWeeks is the API cost each plan ran up in from's week before
-// from: what a period that starts mid-week counts its quota on from.
+// seedPlanWeeks counts the fraction used before a summary's midweek start.
 func (u *summaryRun) seedPlanWeeks() planWeeks {
 	w := planWeeks{}
 	if len(u.plans) == 0 || u.from.IsZero() {

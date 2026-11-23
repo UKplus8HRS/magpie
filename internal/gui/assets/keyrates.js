@@ -165,16 +165,13 @@ function priceRateField() {
 }
 window.priceFields = (p) => [...priceRateField(), ...planPriceField(p)];
 
-// A plan's price (provider.PlanPrice): what a subscription costs per month
-// or week, and its full quota per week or month measured in USD at the
-// official API price. Usage shows the plan's calls at the plan's price
-// (price per week over quota per week, a month being 4.33 weeks) beside
-// the API price; past the week's quota they count at the API price. Both
-// empty is no plan.
+// The default quota and all model overrides use the same period. Each
+// override values the whole allowance if spent on that model alone.
 function planPriceField(p) {
   if (!("planPrice" in draft)) {
     const pl = p?.plan;
-    Object.assign(draft, { planPrice: pl ? String(pl.price) : "", planPricePer: pl?.pricePer || "month", planQuota: pl ? String(pl.quota) : "", planQuotaPer: pl?.quotaPer || "week" });
+    Object.assign(draft, { planPrice: pl ? String(pl.price) : "", planPricePer: pl?.pricePer || "month", planQuota: pl?.quota ? String(pl.quota) : "", planQuotaPer: pl?.quotaPer || "week",
+      planModels: Object.entries(pl?.models || {}).sort(([a], [b]) => a.localeCompare(b)).map(([model, quota]) => ({ model, quota: String(quota) })) });
   }
   const row = (k, per, hold, pers) => {
     const box = input(draft[k], hold);
@@ -186,19 +183,68 @@ function planPriceField(p) {
     return line;
   };
   return [...field(t("Plan price (USD)"), row("planPrice", "planPricePer", "20", ["month", "week"]), t("What the subscription costs you. Empty is no plan: costs stay at the API price")),
-    ...field(t("Plan quota (API USD)"), row("planQuota", "planQuotaPer", "60", ["week", "month"]), t("The plan's full quota, worth this at the API price. Usage shows its calls at the plan's price beside the API price; past the week's quota they count at the API price"))];
+    ...field(t("Plan quota (API USD)"), row("planQuota", "planQuotaPer", "60", ["week", "month"]), t("Optional default for models without an override. The period applies to all quotas.")),
+    ...planModelFields(draft.planModels)];
+}
+
+function planModelFields(models) {
+  const box = el("div", "stack");
+  const add = el("button", "text", t("Add model quota"));
+  add.type = "button";
+  const draw = (entry) => {
+    const line = el("div", "plan-line plan-model");
+    const model = input(entry.model, t("Model ID for quota"));
+    const quota = input(entry.quota, t("Quota in API USD"));
+    model.setAttribute("aria-label", model.placeholder);
+    quota.setAttribute("aria-label", quota.placeholder);
+    quota.inputMode = "decimal";
+    model.oninput = () => { entry.model = model.value; };
+    quota.oninput = () => { entry.quota = quota.value; };
+    const remove = el("button", "text", t("Remove"));
+    remove.type = "button";
+    remove.onclick = () => { models.splice(models.indexOf(entry), 1); line.remove(); add.focus(NO_SCROLL); };
+    line.append(model, quota, remove);
+    add.before(line);
+    return model;
+  };
+  box.append(add);
+  for (const entry of models) draw(entry);
+  add.onclick = () => {
+    const entry = { model: "", quota: "" };
+    models.push(entry);
+    draw(entry).focus(NO_SCROLL);
+  };
+  return field(t("Model quotas"), box, t("Enter the full allowance in API USD for each model. All models draw from the same weekly allowance."));
 }
 // planPriceOf is the plan as saved: {} for none, undefined when the editor
 // drew no plan, null (named and focused) when typed wrong
 window.planPriceOf = function (ed) {
   const box = ed.querySelector("input.plan-price");
   if (!box) return undefined;
-  const price = String(draft.planPrice ?? "").trim(), quota = String(draft.planQuota ?? "").trim();
-  if (!price && !quota) return {};
-  const pr = decimalOf(price), q = decimalOf(quota);
-  if (!(pr >= 0) || !price) { shown(box).focus(NO_SCROLL); editorError(t("Plan price: a number of dollars, 0 or more"), "warn"); return null; }
-  if (!(q > 0)) { shown(ed.querySelector("input.plan-quota")).focus(NO_SCROLL); editorError(t("Plan quota: what the plan's quota is worth at the API price, in dollars above 0"), "warn"); return null; }
-  return { price: pr, pricePer: draft.planPricePer, quota: q, quotaPer: draft.planQuotaPer };
+  const price = draft.planPrice.trim(), quota = draft.planQuota.trim();
+  const models = Object.create(null);
+  const invalid = (field, message) => {
+    shown(field)?.focus(NO_SCROLL);
+    editorError(message, "warn");
+    return null;
+  };
+  const rows = ed.querySelectorAll(".plan-model");
+  for (const [i, entry] of draft.planModels.entries()) {
+    const model = entry.model.trim(), raw = entry.quota.trim();
+    if (!model && !raw) continue;
+    const value = decimalOf(raw);
+    if (!model || Object.hasOwn(models, model)) return invalid(rows[i]?.firstChild, t("Use a distinct model ID for each quota."));
+    if (!Number.isFinite(value) || value <= 0) return invalid(rows[i]?.children[1], t("Plan quota: what the plan's quota is worth at the API price, in dollars above 0"));
+    models[model] = value;
+  }
+  const modelCount = Object.keys(models).length;
+  if (!price && !quota && !modelCount) return {};
+  const pr = decimalOf(price), q = quota ? decimalOf(quota) : 0;
+  if (!Number.isFinite(pr) || pr < 0) return invalid(box, t("Plan price: a number of dollars, 0 or more"));
+  if (!Number.isFinite(q) || (quota && q <= 0) || (!quota && !modelCount)) {
+    return invalid(ed.querySelector("input.plan-quota"), t("Enter a positive default quota or add a model quota."));
+  }
+  return { price: pr, pricePer: draft.planPricePer, ...(quota ? { quota: q } : {}), quotaPer: draft.planQuotaPer, ...(modelCount ? { models } : {}) };
 };
 
 // keyPriceRates is each key's own price rate as saved, the keys left

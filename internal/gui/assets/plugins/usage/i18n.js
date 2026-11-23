@@ -4,7 +4,7 @@ magpie.strings({
   zh: {
     "at plan prices": "按套餐价格",
     "API {cost}": "API {cost}",
-    "A plan's calls cost its price per week over its weekly quota at the API price, set in its editor's Advanced; past the week's quota they count at the API price": "套餐的调用按「每周价格 ÷ 每周额度（按 API 价）」折算，在其编辑器的「高级」中设置；超出本周额度的部分按 API 价格计算",
+    "Each model draws a share of the same weekly allowance based on its quota in API USD. Usage beyond the allowance is priced at API rates.": "各模型按自身以 API 美元计的额度消耗同一份周额度。超出部分按 API 价格计算。",
     "Other model": "其他模型",
     "Check…": "检查…",
     "Tries that failed, those handed on to another provider too": "失败的尝试，包括转交给其他供应商的",
@@ -307,7 +307,7 @@ magpie.strings({
   "zh-TW": {
     "at plan prices": "按方案價格",
     "API {cost}": "API {cost}",
-    "A plan's calls cost its price per week over its weekly quota at the API price, set in its editor's Advanced; past the week's quota they count at the API price": "方案的呼叫按「每週價格 ÷ 每週額度（按 API 價）」折算，在其編輯器的「進階」中設定；超出本週額度的部分按 API 價格計算",
+    "Each model draws a share of the same weekly allowance based on its quota in API USD. Usage beyond the allowance is priced at API rates.": "各模型按自身以 API 美元計的額度消耗同一份週額度。超出部分按 API 價格計算。",
     "Other model": "其他模型",
     "Check…": "檢查…",
     "Tries that failed, those handed on to another provider too": "失敗的嘗試，包括轉交給其他供應商的",
@@ -610,7 +610,7 @@ magpie.strings({
   ja: {
     "at plan prices": "プラン価格",
     "API {cost}": "API {cost}",
-    "A plan's calls cost its price per week over its weekly quota at the API price, set in its editor's Advanced; past the week's quota they count at the API price": "プランの呼び出しは「週あたりの料金 ÷ API 価格での週の枠」で換算します。エディタの詳細設定で設定します。その週の枠を超えた分は API 価格で数えます",
+    "Each model draws a share of the same weekly allowance based on its quota in API USD. Usage beyond the allowance is priced at API rates.": "各モデルは API 価格で示した利用枠の値に応じて、共通の週次利用枠を消費します。超過分には API 料金が適用されます。",
     "Other model": "別のモデル",
     "Check…": "チェック…",
     "Tries that failed, those handed on to another provider too": "失敗した試行（別のプロバイダに回したものも含む）",
@@ -913,7 +913,7 @@ magpie.strings({
   de: {
     "at plan prices": "zu Tarifpreisen",
     "API {cost}": "API {cost}",
-    "A plan's calls cost its price per week over its weekly quota at the API price, set in its editor's Advanced; past the week's quota they count at the API price": "Die Aufrufe eines Tarifs kosten seinen Wochenpreis geteilt durch sein Wochenkontingent zum API-Preis, eingestellt unter Erweitert in seinem Editor; über dem Wochenkontingent zählen sie zum API-Preis",
+    "Each model draws a share of the same weekly allowance based on its quota in API USD. Usage beyond the allowance is priced at API rates.": "Jedes Modell verbraucht gemäß seinem Kontingent in API-USD einen Anteil desselben Wochenkontingents. Darüber hinaus gelten die API-Preise.",
     "Other model": "Anderes Modell",
     "Check…": "Prüfen…",
     "Tries that failed, those handed on to another provider too": "Fehlgeschlagene Versuche, auch an einen anderen Anbieter weitergegebene",

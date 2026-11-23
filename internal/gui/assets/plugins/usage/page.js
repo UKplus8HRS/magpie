@@ -626,9 +626,9 @@ function costHead(c, note, title, api) {
 // (provider.PlanPrice, usage/plan_week.go): those calls' API cost taken
 // out and their plan cost put in. apiSaid is the same calls at the
 // official price, shown beside it; "" where no call is on a plan.
-const planCost = (x) => x?.planned ? { ...x, cost: x.cost - x.planAPI + x.planCost } : x;
+const planCost = (x) => x?.planned ? { ...x, cost: x.cost - (x.planAPI || 0) + (x.planCost || 0) } : x;
 const apiSaid = (x, prov) => x?.planned ? t("API {cost}", { cost: fmtCost(x, prov) }) : "";
-const planWhy = () => t("A plan's calls cost its price per week over its weekly quota at the API price, set in its editor's Advanced; past the week's quota they count at the API price");
+const planWhy = () => t("Each model draws a share of the same weekly allowance based on its quota in API USD. Usage beyond the allowance is priced at API rates.");
 // a request magpie sent a provider by itself to test it (SourceProbe)
 const probeWhy = () => t("magpie sent this itself to test the provider (Test, Detect APIs or a model list), not for an agent. It is not counted in any total.");
 const unpricedCalls = (n) => t(n === 1 ? "{n} call unpriced" : "{n} calls unpriced", { n: ledNum(n) });

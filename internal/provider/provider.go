@@ -1041,8 +1041,7 @@ func (p Provider) clone() Provider {
 	p.KeyPriceRates = maps.Clone(p.KeyPriceRates)
 	p.KeyRateFactors = maps.Clone(p.KeyRateFactors)
 	if p.Plan != nil {
-		plan := *p.Plan
-		p.Plan = &plan
+		p.Plan = p.Plan.clone()
 	}
 	if p.AccountWindowCaps != nil {
 		m := make(map[string]map[string]int, len(p.AccountWindowCaps))

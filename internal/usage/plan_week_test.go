@@ -22,7 +22,7 @@ func planHome(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
 	t.Setenv("XDG_CACHE_HOME", filepath.Join(home, ".cache"))
 	os.MkdirAll(filepath.Dir(catalog.CachePath()), 0o755)
-	os.WriteFile(catalog.CachePath(), []byte(`{"anthropic":{"id":"anthropic","models":{"sol":{"id":"sol","cost":{"input":2,"output":8}}}}}`), 0o644)
+	os.WriteFile(catalog.CachePath(), []byte(`{"anthropic":{"id":"anthropic","models":{"sol":{"id":"sol","cost":{"input":2,"output":8}},"opus":{"id":"opus","cost":{"input":2,"output":8}},"fable":{"id":"fable","cost":{"input":2,"output":8}}}}}`), 0o644)
 	catalog.Reset()
 	t.Cleanup(catalog.Reset)
 	for _, p := range []provider.Provider{
@@ -94,5 +94,26 @@ func TestSummaryPlanCostCountsTheWeekBeforeThePeriod(t *testing.T) {
 	s := summarize(Today, wed.Add(2*time.Hour), []Record{today})
 	if s.Planned != 1 || !nearUSD(s.PlanCost, 3) {
 		t.Errorf("Wednesday's call: %d planned at $%v, want 1 at $3 (Monday's $8 of the $10 quota counted)", s.Planned, s.PlanCost)
+	}
+}
+
+func TestSummaryPlanModelsShareWeeklyQuota(t *testing.T) {
+	planHome(t)
+	if err := provider.Save(provider.Provider{ID: "plan", Name: "Plan", Key: "sk-plan", Chat: "https://plan.example/v1", Plan: &provider.PlanPrice{
+		Price: 5, PricePer: provider.PlanWeek, Models: map[string]float64{"opus": 8, "fable": 6},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	mon := time.Date(2026, 11, 16, 9, 0, 0, 0, time.Local)
+	wed := mon.AddDate(0, 0, 2)
+	opus := planCall("plan", mon)
+	opus.Model = "opus" // $4 consumes half the $8 Opus allowance
+	Append(opus)
+	unconfigured := planCall("plan", wed)
+	fable := planCall("plan", wed.Add(time.Hour))
+	fable.Model = "fable" // $3 of its $4 fit: half the $5 plan price + $1 overage
+	s := summarize(Today, wed.Add(2*time.Hour), []Record{unconfigured, fable})
+	if s.Planned != 1 || !nearUSD(s.Cost, 8) || !nearUSD(s.PlanAPI, 4) || !nearUSD(s.PlanCost, 3.5) {
+		t.Fatalf("Wednesday after half the allowance was used by Opus: %d planned, API $%v ($%v on the plan), plan $%v", s.Planned, s.Cost, s.PlanAPI, s.PlanCost)
 	}
 }

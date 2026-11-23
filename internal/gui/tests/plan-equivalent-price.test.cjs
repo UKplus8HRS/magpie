@@ -3,7 +3,7 @@
 // plan price (per month/week) and full quota in API USD (per week/month),
 // refuses bad inputs, saves them and clears them with {}; the Usage view
 // displays the plan-equivalent cost beside the official API price ("API $X")
-// when calls are on a plan. In English and Chinese, Chromium and WebKit.
+// when calls are on a plan. In all five UI languages, Chromium and WebKit.
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -27,11 +27,11 @@ const codex = {
   models: [{ id: "gpt-6", name: "GPT-6", on: true }], agents: [], fallback: [], headers: {}, keyList: [],
   account: { agent: "codex", agentName: "Codex", user: "me@example.com", plan: "PLUS", logins: [{ user: "me@example.com", plan: "PLUS", active: true, on: true }] },
   proxy: "", maxConcurrency: null,
-  plan: { price: 20, pricePer: "month", quota: 60, quotaPer: "week" },
+  plan: { price: 20, pricePer: "month", quota: 60, quotaPer: "week", models: { "gpt-6": 100 } },
 };
 
 function serve(lang, posts) {
-  const providers = { providers: [gemini, codex], presets: [], excluded: [], gateway: { running: true, window: true } };
+  const providers = { providers: [{ ...gemini }, { ...codex }], presets: [], excluded: [], gateway: { running: true, window: true } };
   const settings = { lang, theme: "light", quotaLeft: false, currency: "usd" };
   return async (route) => {
     const url = new URL(route.request().url());
@@ -61,7 +61,11 @@ function serve(lang, posts) {
     if (url.pathname === "/api/sessions") return json({ sessions: [], dirs: [] });
     if (url.pathname === "/api/sessions/stats") return json({ from: "", to: "", days: [], agents: {} });
     if (url.pathname.startsWith("/api/provider/") && route.request().method() === "POST") {
-      posts.push({ action: url.pathname.slice("/api/provider/".length), body: route.request().postDataJSON() });
+      const body = route.request().postDataJSON();
+      posts.push({ action: url.pathname.slice("/api/provider/".length), body });
+      const saved = providers.providers.find((p) => p.id === body.id);
+      if (saved && body.plan && Object.keys(body.plan).length) saved.plan = body.plan;
+      else if (saved && body.plan) delete saved.plan;
       return json(providers);
     }
     if (url.pathname.startsWith("/api/")) return json({});
@@ -73,11 +77,14 @@ function serve(lang, posts) {
 
 const words = {
   en: { save: "Save", planLabel: "at plan prices", perWeek: "per week", perMonth: "per month" },
-  zh: { save: "保存", planLabel: "按套餐价格", perWeek: "每周", perMonth: "每月" },
+  zh: { save: "保存", planLabel: "按套餐价格", perMonth: "每月" },
+  "zh-TW": { save: "儲存", planLabel: "按方案價格", perMonth: "每月" },
+  ja: { save: "保存", planLabel: "プラン価格", perMonth: "1か月あたり" },
+  de: { save: "Speichern", planLabel: "zu Tarifpreisen", perMonth: "pro Monat" },
 };
 
 for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium", "webkit"])) {
-  for (const lang of ["en", "zh"]) {
+  for (const lang of ["en", "zh", "zh-TW", "ja", "de"]) {
     const w = words[lang];
 
     test(`${engine} ${lang}: provider plan price is edited, validated, saved and cleared`, async (t) => {
@@ -97,9 +104,10 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await page.locator(".editor input.plan-price").waitFor();
       assert.equal(await page.locator(".editor input.plan-price").inputValue(), "20");
       assert.equal(await page.locator(".editor input.plan-quota").inputValue(), "60");
+      assert.equal(await page.locator(".editor .plan-model input").first().inputValue(), "gpt-6");
       await page.locator(".editor .bar").getByRole("button", { name: w.save, exact: true }).click();
       for (let i = 0; i < 50 && posts.length === 0; i++) await page.waitForTimeout(50);
-      assert.deepEqual(posts.at(-1).body.plan, { price: 20, pricePer: "month", quota: 60, quotaPer: "week" });
+      assert.deepEqual(posts.at(-1).body.plan, { price: 20, pricePer: "month", quota: 60, quotaPer: "week", models: { "gpt-6": 100 } });
 
       // edit a key provider's plan: missing quota is rejected before POST
       await page.locator(".row.provider", { hasText: "Gemini" }).click();
@@ -111,18 +119,24 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await page.locator(".editor .editor-error").waitFor();
       assert.equal(posts.length, beforeBad, "missing quota must not post");
 
-      await page.locator(".editor input.plan-quota").fill("60");
+      await page.locator(".editor .plan-quota + .segs").getByRole("button", { name: w.perMonth, exact: true }).click();
+      const advanced = page.locator(".editor details.advanced");
+      await advanced.locator(".stack > button").filter({ hasText: new RegExp({ en: "Add model quota", zh: "添加模型额度", "zh-TW": "新增模型額度", ja: "モデルの利用枠を追加", de: "Modellkontingent hinzufügen" }[lang]) }).click();
+      const override = page.locator(".editor .plan-model");
+      await override.locator("input").nth(0).fill("gemini-2.5");
+      await override.locator("input").nth(1).fill("2580");
       await page.locator(".editor .bar").getByRole("button", { name: w.save, exact: true }).click();
       for (let i = 0; i < 50 && posts.length === beforeBad; i++) await page.waitForTimeout(50);
       assert.equal(posts.at(-1).action, "save");
-      assert.deepEqual(posts.at(-1).body.plan, { price: 20, pricePer: "month", quota: 60, quotaPer: "week" });
+      assert.deepEqual(posts.at(-1).body.plan, { price: 20, pricePer: "month", quotaPer: "month", models: { "gemini-2.5": 2580 } });
 
-      // clearing both fields posts {} to remove the plan
+      // The saved override reloads. Removing it and clearing the price posts {}.
       await page.locator(".row.provider", { hasText: "Gemini" }).click();
       await unfold(page);
       await page.locator(".editor input.plan-price").waitFor();
+      assert.equal(await override.locator("input").nth(1).inputValue(), "2580");
+      await override.getByRole("button").click();
       await page.locator(".editor input.plan-price").fill("");
-      await page.locator(".editor input.plan-quota").fill("");
       const prev = posts.length;
       await page.locator(".editor .bar").getByRole("button", { name: w.save, exact: true }).click();
       for (let i = 0; i < 50 && posts.length === prev; i++) await page.waitForTimeout(50);

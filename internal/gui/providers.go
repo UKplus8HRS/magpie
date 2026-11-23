@@ -486,11 +486,11 @@ type providerJSON struct {
 	PriceRate float64 `json:"priceRate,omitempty"`
 	// what its plan costs and its quota in API dollars, for Usage's
 	// plan-equivalent price (provider.PlanPrice); none for no plan
-	Plan   *provider.PlanPrice `json:"plan,omitempty"`
-	Models    []modelJSON `json:"models"`            // everything the vendor lists, exposed ones flagged
-	Exposed   int         `json:"exposed"`           // how many reach the agents
-	Draws     int         `json:"draws,omitempty"`   // how many of its models draw images (gateway.Drawers)
-	DrawIDs   []string    `json:"drawIds,omitempty"` // those models' ids, listed apart in its editor
+	Plan    *provider.PlanPrice `json:"plan,omitempty"`
+	Models  []modelJSON         `json:"models"`            // everything the vendor lists, exposed ones flagged
+	Exposed int                 `json:"exposed"`           // how many reach the agents
+	Draws   int                 `json:"draws,omitempty"`   // how many of its models draw images (gateway.Drawers)
+	DrawIDs []string            `json:"drawIds,omitempty"` // those models' ids, listed apart in its editor
 	// the names those are shown by where one isn't its id: a ChatGPT
 	// account's gpt-image-2 is its one GPT Image, whichever model its
 	// backend draws with (StarBits on X read the id as an old model)
@@ -2473,7 +2473,7 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 				}
 			}
 			// what its plan costs, for Usage's plan-equivalent price
-			if in.Plan != nil && *in.Plan != (provider.PlanPrice{}) {
+			if in.Plan != nil && !in.Plan.Empty() {
 				if bad := provider.CheckPlanPrice(*in.Plan); bad != "" {
 					fail(rw, errors.New(bad))
 					return
@@ -2643,7 +2643,7 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 				// a plan's price left out is kept; {} takes it off
 				if in.Plan == nil && old != nil {
 					in.Plan = old.Plan
-				} else if in.Plan != nil && *in.Plan == (provider.PlanPrice{}) {
+				} else if in.Plan != nil && in.Plan.Empty() {
 					in.Plan = nil
 				}
 				if in.KeyRateFactors == nil && old != nil {

@@ -612,15 +612,23 @@ function renderUsageLoading() {
 // total never reads as if those cost nothing — and with none priced, the
 // count alone. note is that count in words ("" when everything was
 // priced), title the tooltip.
-function costHead(c, note, title) {
+function costHead(c, note, title, api) {
   const cost = $("#usageCost");
   cost.replaceChildren();
   cost.title = "";
   if (!c && !note) return;
   if (c) cost.append(el("b", "", c));
-  cost.append(el("span", note ? "unpriced" : "", note || t("effective prices")));
-  cost.title = title;
+  cost.append(el("span", note ? "unpriced" : "", note || t(api ? "at plan prices" : "effective prices")));
+  if (api) cost.append(el("span", "api-cost", api));
+  cost.title = api ? title + "\n" + planWhy() : title;
 }
+// A cost at plan prices where some of its calls are on a provider's plan
+// (provider.PlanPrice, usage/plan_week.go): those calls' API cost taken
+// out and their plan cost put in. apiSaid is the same calls at the
+// official price, shown beside it; "" where no call is on a plan.
+const planCost = (x) => x?.planned ? { ...x, cost: x.cost - x.planAPI + x.planCost } : x;
+const apiSaid = (x, prov) => x?.planned ? t("API {cost}", { cost: fmtCost(x, prov) }) : "";
+const planWhy = () => t("A plan's calls cost its price per week over its weekly quota at the API price, set in its editor's Advanced; past the week's quota they count at the API price");
 // a request magpie sent a provider by itself to test it (SourceProbe)
 const probeWhy = () => t("magpie sent this itself to test the provider (Test, Detect APIs or a model list), not for an agent. It is not counted in any total.");
 const unpricedCalls = (n) => t(n === 1 ? "{n} call unpriced" : "{n} calls unpriced", { n: ledNum(n) });
@@ -1073,7 +1081,7 @@ function renderUsage() {
   view.classList.remove("loading");
   view.removeAttribute("aria-busy");
   renderPeriod();
-  costHead(fmtCost(u), u.unpriced ? unpricedCalls(u.unpriced) : "", unpricedCallsWhy(u.unpriced));
+  costHead(fmtCost(planCost(u)), u.unpriced ? unpricedCalls(u.unpriced) : "", unpricedCallsWhy(u.unpriced), apiSaid(u));
 
   const stats = $("#stats");
   stats.replaceChildren();
@@ -1140,7 +1148,7 @@ function renderUsage() {
     out.style.height = (100 * p.output / peak).toFixed(1) + "%";
     b.append(out, inp);
     const when = u.bucket === "hour" ? `${p.label}:00` : u.bucket === "week" ? t("week of {label}", { label: dayOf(p) }) : dayOf(p);
-    b.title = p.calls ? t(p.calls === 1 ? "{when} · {tokens} tokens · {n} call" : "{when} · {tokens} tokens · {n} calls", { when, tokens: fmtN(usageTokens(p)), n: p.calls }) + (fmtCost(p) ? " · " + fmtCost(p) : "") : t("{when} · nothing", { when });
+    b.title = p.calls ? t(p.calls === 1 ? "{when} · {tokens} tokens · {n} call" : "{when} · {tokens} tokens · {n} calls", { when, tokens: fmtN(usageTokens(p)), n: p.calls }) + (fmtCost(p) ? " · " + fmtCost(planCost(p)) + (p.planned ? " (" + apiSaid(p) + ")" : "") : "") : t("{when} · nothing", { when });
     bars.append(b);
     const last = i === n - 1 && (n - 1) % every >= every / 2;
     labels.append(el("span", "", i % every === 0 || last ? dayOf(p) : ""));
@@ -1206,7 +1214,7 @@ function renderUsage() {
     const hit = g.cache_read && hitRate !== null ? " · " + t("hit rate {p}", { p: hitPct(hitRate) }) : "";
     num.append(el("b", "", fmtN(usageTokens(g))), Object.assign(el("small", "", t("{a} in · {b} out", { a: fmtN(g.input), b: fmtN(g.output) }) + (g.cache_read ? " · " + t("{n} cached", { n: fmtN(g.cache_read) }) : "") + hit), { title: hit && cacheHitTip(g) }));
     r.append(num);
-    r.append(el("div", "cost", fmtCost(g, g.provider) || ""));
+    r.append(Object.assign(el("div", "cost", fmtCost(planCost(g), g.provider) || ""), { title: apiSaid(g, g.provider) }));
     if (act) act(r, g);
     return r;
   };

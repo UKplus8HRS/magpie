@@ -7974,15 +7974,6 @@ function concurrencyField(p) {
     ...field(t("Queue wait"), wait, t("Seconds a request waits for a free slot before it is turned away. 0 or empty waits as long as it takes")),
   ];
 }
-// priceRateField: a relay's rate on the official price (#819), which
-// Usage's costs are multiplied by; empty is the price as listed
-function priceRateField() {
-  const box = input(draft.priceRate ?? "", t("1, the official price"));
-  box.classList.add("price-rate");
-  box.inputMode = "decimal";
-  box.oninput = () => { draft.priceRate = box.value; };
-  return field(t("Price rate"), box, t("Costs are counted at the official price times this, as a relay bills, like 0.8 or 1.5; a price you set for a model stays as set"));
-}
 // countFreeField: provider.CountFree (jiabubu: a free daily quota)
 function countFreeField() {
   const [l, c] = tick(t("Count its models as free"), !!draft.countFree);
@@ -8368,7 +8359,9 @@ function accountProxiesOfDraft() {
 }
 
 // a key's own price rate (@tnt12231 on X), in keyrates.js, and any other
-// part keyrates.js draws for a provider with two or more keys (f)
+// part keyrates.js draws for a provider with two or more keys (f): the
+// Price rate and a plan's price (priceFields) are drawn there for every
+// provider and account, so they weigh nothing on the core
 // (on: two keys or more, unless said); a relay's top-up rate
 // (@YIXIE233 on X) is drawn there too
 const keyRateField = (p, f = "keyPriceRateField", on = p?.keyList?.length > 1, at = el("span")) => on ? (import("./keyrates.js").then(() => at.isConnected && at.replaceWith(...window[f](p)), () => {}), [at]) : [];
@@ -9825,7 +9818,7 @@ function drawEditor(p, presetID) {
     if (perAccount) proxies.append(perAccount);
     advIn.append(...field(t("Proxy"), proxies));
     advIn.append(...concurrencyField(p));
-    advIn.append(...priceRateField(), ...countFreeField(), ...billingField(), ...rateWindowsField());
+    advIn.append(...keyRateField(p, "priceFields", 1), ...countFreeField(), ...billingField(), ...rateWindowsField());
     if (p.cline) advIn.append(...upstreamField());
     advIn.append(...unmaskRow(""));
     ed.append(...pluginOptionsField(subOf(a.agent)));
@@ -9870,12 +9863,14 @@ function drawEditor(p, presetID) {
       if (queue.bad) return queueError(ed, queue.bad);
       const priceRate = priceRateOfDraft();
       if (priceRate === undefined) return priceRateError(ed);
+      const plan = self.planPriceOf?.(ed);
+      if (plan === null) return;
       const rateWindows = self.rateWindowsOfDraft?.();
       if (rateWindows === false) return rateWindowsError(ed);
       if (priceTypedError(ed)) return;
       const picked = accountModelsDraft(p);
       if (picked === false) return pickError();
-      const body = { id: p.id, models: chosenIds(), noModels: noneChosen(), bestInFamily: bestChosen(), unlisted: draft.unlisted, hiddenDrawers: draft.hiddenDrawers, hiddenVideomakers: draft.hiddenVideomakers, fallback: draft.fallback, contexts: cx.map, outputs: ox.map, compacts: cpx.map, maxImages, proxy, accountProxies: own.map, maxConcurrency, maxAccounts, ...queue, priceRate, rateWindows, modelPrefs: modelPrefsOfDraft(), pinUpstream: !!draft.pinUpstream, unredacted: !!draft.unredacted, countFree: !!draft.countFree, billing: draft.billing || "", ...(p.carriesCompaction ? { nativeCompaction: !!draft.nativeCompaction } : {}), ...routingOfDraft(p) };
+      const body = { id: p.id, models: chosenIds(), noModels: noneChosen(), bestInFamily: bestChosen(), unlisted: draft.unlisted, hiddenDrawers: draft.hiddenDrawers, hiddenVideomakers: draft.hiddenVideomakers, fallback: draft.fallback, contexts: cx.map, outputs: ox.map, compacts: cpx.map, maxImages, proxy, accountProxies: own.map, maxConcurrency, maxAccounts, ...queue, priceRate, plan, rateWindows, modelPrefs: modelPrefsOfDraft(), pinUpstream: !!draft.pinUpstream, unredacted: !!draft.unredacted, countFree: !!draft.countFree, billing: draft.billing || "", ...(p.carriesCompaction ? { nativeCompaction: !!draft.nativeCompaction } : {}), ...routingOfDraft(p) };
       saving(saveBtn, t("Saving…"));
       saveAccountModelsDraft(picked).then(() => savePluginOptions(subOf(a.agent))).then(() => providerAction("save", body, t("{name} saved", { name: p.name })), (e) => { doneSaving(saveBtn); editorError(e.message || String(e)); }); };
     bar.append(cancel, saveBtn);
@@ -10093,7 +10088,7 @@ function drawEditor(p, presetID) {
   if (perKey) proxies.append(perKey);
   advIn.append(...field(t("Proxy"), proxies));
   advIn.append(...concurrencyField(p));
-  advIn.append(...priceRateField(), ...keyRateField(p, "topUpRateField", custom || p?.topUpRate), ...keyRateField(p), ...countFreeField(), ...billingField(), ...rateWindowsField());
+  advIn.append(...keyRateField(p, "priceFields", 1), ...keyRateField(p, "topUpRateField", custom || p?.topUpRate), ...keyRateField(p), ...countFreeField(), ...billingField(), ...rateWindowsField());
 
   if (p?.cline || (isNew && pr?.id === "clinepass")) advIn.append(...upstreamField());
 

@@ -3,7 +3,8 @@
 // Advanced draws a line for each key, folded as keyProxyPicker's lines
 // (proxyLines); a key left empty bills at the provider's Price rate.
 // app.js imports this when a provider with two or more keys opens, or a
-// provider of keys of its own (keyRateField), so it weighs nothing on the
+// provider of keys of its own (keyRateField), and as any editor draws its
+// Price rate and plan's price (priceFields), so it weighs nothing on the
 // core.
 //
 // A relay's top-up rate (@YIXIE233 on X): a relay built on sub2api tells
@@ -152,12 +153,61 @@ document.addEventListener("input", (e) => {
     k.placeholder = keyRateHint(ed, g == null ? null : +g, top, line?.querySelector("input.key-rate-factor")?.value);
   }
 });
+// The provider's Price rate (#819), which Usage's costs are multiplied
+// by (empty is the price as listed), and its plan's price, drawn in every
+// editor's Advanced (priceFields).
+function priceRateField() {
+  const box = input(draft.priceRate ?? "", t("1, the official price"));
+  box.classList.add("price-rate");
+  box.inputMode = "decimal";
+  box.oninput = () => { draft.priceRate = box.value; };
+  return field(t("Price rate"), box, t("Costs are counted at the official price times this, as a relay bills, like 0.8 or 1.5; a price you set for a model stays as set"));
+}
+window.priceFields = (p) => [...priceRateField(), ...planPriceField(p)];
+
+// A plan's price (provider.PlanPrice): what a subscription costs per month
+// or week, and its full quota per week or month measured in USD at the
+// official API price. Usage shows the plan's calls at the plan's price
+// (price per week over quota per week, a month being 4.33 weeks) beside
+// the API price; past the week's quota they count at the API price. Both
+// empty is no plan.
+function planPriceField(p) {
+  if (!("planPrice" in draft)) {
+    const pl = p?.plan;
+    Object.assign(draft, { planPrice: pl ? String(pl.price) : "", planPricePer: pl?.pricePer || "month", planQuota: pl ? String(pl.quota) : "", planQuotaPer: pl?.quotaPer || "week" });
+  }
+  const row = (k, per, hold, pers) => {
+    const box = input(draft[k], hold);
+    box.classList.add(k === "planPrice" ? "plan-price" : "plan-quota");
+    box.inputMode = "decimal";
+    box.oninput = () => { draft[k] = box.value; };
+    const line = el("div", "plan-line");
+    line.append(box, segs(pers.map((x) => [x, t(x === "week" ? "per week" : "per month")]), draft[per], (v) => { draft[per] = v; }));
+    return line;
+  };
+  return [...field(t("Plan price (USD)"), row("planPrice", "planPricePer", "20", ["month", "week"]), t("What the subscription costs you. Empty is no plan: costs stay at the API price")),
+    ...field(t("Plan quota (API USD)"), row("planQuota", "planQuotaPer", "60", ["week", "month"]), t("The plan's full quota, worth this at the API price. Usage shows its calls at the plan's price beside the API price; past the week's quota they count at the API price"))];
+}
+// planPriceOf is the plan as saved: {} for none, undefined when the editor
+// drew no plan, null (named and focused) when typed wrong
+window.planPriceOf = function (ed) {
+  const box = ed.querySelector("input.plan-price");
+  if (!box) return undefined;
+  const price = String(draft.planPrice ?? "").trim(), quota = String(draft.planQuota ?? "").trim();
+  if (!price && !quota) return {};
+  const pr = decimalOf(price), q = decimalOf(quota);
+  if (!(pr >= 0) || !price) { shown(box).focus(NO_SCROLL); editorError(t("Plan price: a number of dollars, 0 or more"), "warn"); return null; }
+  if (!(q > 0)) { shown(ed.querySelector("input.plan-quota")).focus(NO_SCROLL); editorError(t("Plan quota: what the plan's quota is worth at the API price, in dollars above 0"), "warn"); return null; }
+  return { price: pr, pricePer: draft.planPricePer, quota: q, quotaPer: draft.planQuotaPer };
+};
+
 // keyPriceRates is each key's own price rate as saved, the keys left
 // empty out; a key typed wrong is focused and named, and gives null. An
 // editor that drew no lines sends them as they were (undefined). It puts
 // the top-up rate in body too, when the editor drew its box, and gives
 // null when that is typed wrong.
 window.keyPriceRates = function (ed, body) {
+  if ((body.plan = planPriceOf(ed)) === null) return null;
   const top = ed.querySelector("input.top-up-rate");
   if (top && (body.topUpRate = topUpRateOf(top)) === undefined) return null;
   const every = ed.querySelector("input.rate-read-hours");

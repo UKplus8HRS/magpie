@@ -4,6 +4,12 @@
 // works. {name} slots are filled by t(str, vars).
 const I18N = {
   zh: {
+    "Plan price (USD)": "套餐价格（美元）",
+    "Plan quota (API USD)": "套餐额度（按 API 价，美元）",
+    "What the subscription costs you. Empty is no plan: costs stay at the API price": "这个订阅花你多少钱。留空即没有套餐：费用仍按 API 价格计算",
+    "The plan's full quota, worth this at the API price. Usage shows its calls at the plan's price beside the API price; past the week's quota they count at the API price": "套餐的全部额度按 API 价格值多少。用量页按套餐价格显示它的调用，旁边附 API 价格；超出本周额度的部分按 API 价格计算",
+    "Plan price: a number of dollars, 0 or more": "套餐价格：美元金额，0 或更多",
+    "Plan quota: what the plan's quota is worth at the API price, in dollars above 0": "套餐额度：按 API 价格计算的额度价值，大于 0 的美元金额",
     "disabled": "已停用",
     "Disabled in Settings › Models ({pattern}): refused on every route": "已在 设置 › 模型 中停用（{pattern}）：所有路由都会拒绝",
     "Check {model} on {provider}": "在 {provider} 上检查 {model}",
@@ -5588,6 +5594,12 @@ const I18N = {
     "taken out of this agent's model list": "已从这个 Agent 的模型列表中移除",
   },
   "zh-TW": {
+    "Plan price (USD)": "方案價格（美元）",
+    "Plan quota (API USD)": "方案額度（按 API 價，美元）",
+    "What the subscription costs you. Empty is no plan: costs stay at the API price": "這個訂閱花你多少錢。留空即沒有方案：費用仍按 API 價格計算",
+    "The plan's full quota, worth this at the API price. Usage shows its calls at the plan's price beside the API price; past the week's quota they count at the API price": "方案的全部額度按 API 價格值多少。用量頁按方案價格顯示它的呼叫，旁邊附 API 價格；超出本週額度的部分按 API 價格計算",
+    "Plan price: a number of dollars, 0 or more": "方案價格：美元金額，0 或更多",
+    "Plan quota: what the plan's quota is worth at the API price, in dollars above 0": "方案額度：按 API 價格計算的額度價值，大於 0 的美元金額",
     "disabled": "已停用",
     "Disabled in Settings › Models ({pattern}): refused on every route": "已在 設定 › 模型 中停用（{pattern}）：所有路由都會拒絕",
     "Check {model} on {provider}": "在 {provider} 上檢查 {model}",
@@ -11156,6 +11168,12 @@ const I18N = {
     "taken out of this agent's model list": "已從這個 Agent 的模型列表中移除",
   },
   ja: {
+    "Plan price (USD)": "プラン料金（USD）",
+    "Plan quota (API USD)": "プランの枠（API 価格、USD）",
+    "What the subscription costs you. Empty is no plan: costs stay at the API price": "このサブスクリプションに払っている金額。空欄ならプランなし：費用は API 価格のまま",
+    "The plan's full quota, worth this at the API price. Usage shows its calls at the plan's price beside the API price; past the week's quota they count at the API price": "プランの枠全体が API 価格でいくらに相当するか。使用量ページはその呼び出しをプラン価格で示し、API 価格を併記します。その週の枠を超えた分は API 価格で数えます",
+    "Plan price: a number of dollars, 0 or more": "プラン料金：0 以上のドル額",
+    "Plan quota: what the plan's quota is worth at the API price, in dollars above 0": "プランの枠：API 価格での枠の価値、0 より大きいドル額",
     "disabled": "無効",
     "Disabled in Settings › Models ({pattern}): refused on every route": "設定 › モデル で無効にしています（{pattern}）：どの経路でも断られます",
     "Check {model} on {provider}": "{provider} で {model} をチェック",
@@ -16726,6 +16744,12 @@ const I18N = {
     "taken out of this agent's model list": "このエージェントのモデル一覧から外されています",
   },
   de: {
+    "Plan price (USD)": "Tarifpreis (USD)",
+    "Plan quota (API USD)": "Tarifkontingent (API-USD)",
+    "What the subscription costs you. Empty is no plan: costs stay at the API price": "Was das Abo dich kostet. Leer heißt kein Tarif: Kosten bleiben beim API-Preis",
+    "The plan's full quota, worth this at the API price. Usage shows its calls at the plan's price beside the API price; past the week's quota they count at the API price": "Das volle Kontingent des Tarifs, so viel wert zum API-Preis. Nutzung zeigt seine Aufrufe zum Tarifpreis neben dem API-Preis; über dem Wochenkontingent zählen sie zum API-Preis",
+    "Plan price: a number of dollars, 0 or more": "Tarifpreis: ein Dollarbetrag, 0 oder mehr",
+    "Plan quota: what the plan's quota is worth at the API price, in dollars above 0": "Tarifkontingent: was das Kontingent zum API-Preis wert ist, in Dollar über 0",
     "disabled": "deaktiviert",
     "Disabled in Settings › Models ({pattern}): refused on every route": "In Einstellungen › Modelle deaktiviert ({pattern}): auf jedem Weg abgelehnt",
     "Check {model} on {provider}": "{model} bei {provider} prüfen",

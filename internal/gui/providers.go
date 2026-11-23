@@ -483,7 +483,10 @@ type providerJSON struct {
 	KeyRateFactors map[string]float64 `json:"keyRateFactors,omitempty"`
 
 	// what it charges against the official price, 0 for that (#819)
-	PriceRate float64     `json:"priceRate,omitempty"`
+	PriceRate float64 `json:"priceRate,omitempty"`
+	// what its plan costs and its quota in API dollars, for Usage's
+	// plan-equivalent price (provider.PlanPrice); none for no plan
+	Plan   *provider.PlanPrice `json:"plan,omitempty"`
 	Models    []modelJSON `json:"models"`            // everything the vendor lists, exposed ones flagged
 	Exposed   int         `json:"exposed"`           // how many reach the agents
 	Draws     int         `json:"draws,omitempty"`   // how many of its models draw images (gateway.Drawers)
@@ -1028,7 +1031,7 @@ func providerInfoWith(p provider.Provider, ls provider.Listing, agents []agentUs
 		Proxy: p.Proxy, AccountProxies: p.AccountProxies, AccountModels: p.AccountModels, AccountCaps: p.AccountCaps, AccountWindowCaps: p.AccountWindowCaps, AccountWindowAmounts: p.AccountWindowAmounts, AccountNames: p.AccountNames, Headers: p.Headers, ExtraBody: p.ExtraBody, ReplyHeaders: p.ReplyHeaders, PassHeaders: p.PassHeaders, Searches: p.Searches, Cline: p.ClinePinnable(), PinUpstream: p.PinUpstream, Unredacted: p.Unredacted, CountFree: p.CountFree, Billing: p.Billing, BillingKind: p.BillingKind(), InsecureTLS: p.InsecureTLS, TakesInsecureTLS: p.TakesInsecureTLS(), HTTP1: p.HTTP1, ClientCert: tilde(p.ClientCert), ClientKey: tilde(p.ClientKey), ServerCA: tilde(p.ServerCA), TakesClientCert: p.TakesClientCert(), ServerPin: p.ServerPin, TakesServerPin: p.TakesServerPin(), Resolve: p.Resolve, TakesResolve: p.TakesResolve(), Socket: p.Socket, TakesSocket: p.TakesSocket(), LimitRestOff: p.LimitRestOff, UpstreamProviders: p.UpstreamProviders, ImageFilesOff: p.ImageFilesOff, TakesImageFiles: p.TakesImageFiles(), NativeCompaction: p.NativeCompaction, CarriesCompaction: p.CarriesCompaction(), PassUserAgent: !p.MagpieUserAgent, OwnClient: p.OwnClient(), PassErrors: p.PassErrors, TakesPassErrors: p.TakesPassErrors(), AuthHeader: p.AuthHeader, BothAuth: p.BothAuth(), BalanceURL: p.BalanceURL, BalancePath: p.BalancePath, BalanceMethod: p.BalanceMethod, NoBalanceProbe: p.NoBalanceProbe, ModelsURL: p.ModelsURL, ListOff: p.ListsOff(), TakesListOff: p.Account == nil && !p.IsPlugin() && !p.DecideOnly(), TakesModelHeaders: p.Account == nil, DecideAPIKind: p.DecideAPIKind(),
 		Ready: p.Ready(), Chosen: p.PicksOf(avail), Agents: make([]providerAgent, 0, len(agents)),
 		Fallback: p.Fallback, Routing: p.Routing, Sink: p.Sink, UseFirst: p.UseFirst, NoStandIn: p.NoStandIn, Affinity: p.Affinity, KeepLogin: p.KeepLogin, KeepLoginAs: p.KeepLoginAs, SwitchOnly: p.SwitchOnly, RestartApp: p.RestartApp, Self: p.SelfAnswered(), KeepSelf: p.KeepSelf, ThisDevice: p.ThisDevice, CapStop: p.CapStop, CapCareful: p.CapCareful, Unlisted: p.Unlisted, NoModels: p.ServesNone(), BestInFamily: p.BestInFamily && len(p.Models) == 0 && !p.NoModels, Off: p.Off, Contexts: p.Contexts,
-		MaxConcurrency: p.MaxConcurrency, PluginConcurrency: p.PluginConcurrency(), MaxAccounts: p.MaxAccounts, PluginAccounts: p.PluginAtOnce(), PriceRate: p.PriceRate, KeyPriceRates: p.KeyPriceRates, TopUpRate: p.TopUpRate, RateReadHours: p.RateReadHours, KeyGroupRates: keyGroupRatesOf(p), KeyRateFactors: p.KeyRateFactors,
+		MaxConcurrency: p.MaxConcurrency, PluginConcurrency: p.PluginConcurrency(), MaxAccounts: p.MaxAccounts, PluginAccounts: p.PluginAtOnce(), PriceRate: p.PriceRate, Plan: p.Plan, KeyPriceRates: p.KeyPriceRates, TopUpRate: p.TopUpRate, RateReadHours: p.RateReadHours, KeyGroupRates: keyGroupRatesOf(p), KeyRateFactors: p.KeyRateFactors,
 		RateWindows: p.RateWindows, RateNow: rateNowOf(p, time.Now()),
 		AccountConcurrency: p.AccountConcurrency, AccountWeights: p.AccountWeights, QueueLimit: p.QueueLimit, QueueWait: p.QueueWait, MaxRPM: p.MaxRPM, MaxImages: p.MaxImages,
 		Outputs: provider.OutputsOf(p.ID), Compacts: provider.CompactsOf(p.ID),
@@ -2469,6 +2472,13 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 					return
 				}
 			}
+			// what its plan costs, for Usage's plan-equivalent price
+			if in.Plan != nil && *in.Plan != (provider.PlanPrice{}) {
+				if bad := provider.CheckPlanPrice(*in.Plan); bad != "" {
+					fail(rw, errors.New(bad))
+					return
+				}
+			}
 			wins, keepWins, err := rateWindowsOf(req.RateWindows)
 			if err != nil {
 				fail(rw, err)
@@ -2629,6 +2639,12 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 				}
 				if in.KeyPriceRates == nil && old != nil {
 					in.KeyPriceRates = old.KeyPriceRates
+				}
+				// a plan's price left out is kept; {} takes it off
+				if in.Plan == nil && old != nil {
+					in.Plan = old.Plan
+				} else if in.Plan != nil && *in.Plan == (provider.PlanPrice{}) {
+					in.Plan = nil
 				}
 				if in.KeyRateFactors == nil && old != nil {
 					in.KeyRateFactors = old.KeyRateFactors

@@ -2,6 +2,9 @@
 // kernel adds them to i18n.js's (magpie.strings).
 magpie.strings({
   zh: {
+    "at plan prices": "按套餐价格",
+    "API {cost}": "API {cost}",
+    "A plan's calls cost its price per week over its weekly quota at the API price, set in its editor's Advanced; past the week's quota they count at the API price": "套餐的调用按「每周价格 ÷ 每周额度（按 API 价）」折算，在其编辑器的「高级」中设置；超出本周额度的部分按 API 价格计算",
     "Other model": "其他模型",
     "Check…": "检查…",
     "Tries that failed, those handed on to another provider too": "失败的尝试，包括转交给其他供应商的",
@@ -302,6 +305,9 @@ magpie.strings({
     "Sent upstream as {to}, as the agent spoke it": "以 {to} 协议发往上游，与 agent 所用协议相同",
   },
   "zh-TW": {
+    "at plan prices": "按方案價格",
+    "API {cost}": "API {cost}",
+    "A plan's calls cost its price per week over its weekly quota at the API price, set in its editor's Advanced; past the week's quota they count at the API price": "方案的呼叫按「每週價格 ÷ 每週額度（按 API 價）」折算，在其編輯器的「進階」中設定；超出本週額度的部分按 API 價格計算",
     "Other model": "其他模型",
     "Check…": "檢查…",
     "Tries that failed, those handed on to another provider too": "失敗的嘗試，包括轉交給其他供應商的",
@@ -602,6 +608,9 @@ magpie.strings({
     "Sent upstream as {to}, as the agent spoke it": "以 {to} 協議發往上游，與 agent 所用協議相同",
   },
   ja: {
+    "at plan prices": "プラン価格",
+    "API {cost}": "API {cost}",
+    "A plan's calls cost its price per week over its weekly quota at the API price, set in its editor's Advanced; past the week's quota they count at the API price": "プランの呼び出しは「週あたりの料金 ÷ API 価格での週の枠」で換算します。エディタの詳細設定で設定します。その週の枠を超えた分は API 価格で数えます",
     "Other model": "別のモデル",
     "Check…": "チェック…",
     "Tries that failed, those handed on to another provider too": "失敗した試行（別のプロバイダに回したものも含む）",
@@ -902,6 +911,9 @@ magpie.strings({
     "Sent upstream as {to}, as the agent spoke it": "エージェントと同じ {to} で上流へ送信",
   },
   de: {
+    "at plan prices": "zu Tarifpreisen",
+    "API {cost}": "API {cost}",
+    "A plan's calls cost its price per week over its weekly quota at the API price, set in its editor's Advanced; past the week's quota they count at the API price": "Die Aufrufe eines Tarifs kosten seinen Wochenpreis geteilt durch sein Wochenkontingent zum API-Preis, eingestellt unter Erweitert in seinem Editor; über dem Wochenkontingent zählen sie zum API-Preis",
     "Other model": "Anderes Modell",
     "Check…": "Prüfen…",
     "Tries that failed, those handed on to another provider too": "Fehlgeschlagene Versuche, auch an einen anderen Anbieter weitergegebene",

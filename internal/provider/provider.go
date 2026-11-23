@@ -290,6 +290,11 @@ type Provider struct {
 	// a price the user set for one of its models stands as set. 0 is the
 	// price as listed; at most three decimals (PriceRateOK).
 	PriceRate float64 `json:"priceRate,omitempty"`
+	// Plan is what the subscription costs the user and its full quota in
+	// API dollars, by the user's word: Usage shows its calls at the plan's
+	// equivalent price (PlanCost) beside the official one. nil is none:
+	// the official price alone, as for a key paid as used.
+	Plan *PlanPrice `json:"plan,omitempty"`
 	// CountFree is the user's word that the provider costs them nothing
 	// (jiabubu on Discord: ModelScope's free daily quota): every model of
 	// it counts as free where routing weighs that, as a model its vendor
@@ -1035,6 +1040,10 @@ func (p Provider) clone() Provider {
 	p.KeyOwnBalances = maps.Clone(p.KeyOwnBalances)
 	p.KeyPriceRates = maps.Clone(p.KeyPriceRates)
 	p.KeyRateFactors = maps.Clone(p.KeyRateFactors)
+	if p.Plan != nil {
+		plan := *p.Plan
+		p.Plan = &plan
+	}
 	if p.AccountWindowCaps != nil {
 		m := make(map[string]map[string]int, len(p.AccountWindowCaps))
 		for k, v := range p.AccountWindowCaps {
@@ -1175,6 +1184,8 @@ func accountSettings(a, pk Provider) Provider {
 	// what it bills against the official price (#819): an account's editor
 	// sets it as a key provider's does (PaulT on Discord, Codex)
 	a.PriceRate = pk.PriceRate
+	// what its plan costs, for Usage's plan-equivalent price
+	a.Plan = pk.Plan
 	// counted free by the user's word, every account alike
 	a.CountFree = pk.CountFree
 	// and how it bills, by the user's word (BillingKind)
@@ -1908,6 +1919,7 @@ func normalize(p Provider) Provider {
 	p.KeySpendCaps = normalKeySpendCaps(p.KeySpendCaps)
 	p.KeyOwnBalances = normalKeyOwnBalances(p.KeyOwnBalances)
 	p.KeyPriceRates = normalKeyPriceRates(p.KeyPriceRates)
+	p.Plan = normalPlan(p.Plan)
 	p.KeyRateFactors = normalKeyRateFactors(p.KeyRateFactors)
 	if TopUpRateOK(p.TopUpRate) != "" {
 		p.TopUpRate = 0

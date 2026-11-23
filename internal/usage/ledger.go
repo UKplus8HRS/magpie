@@ -1044,6 +1044,9 @@ func (t *Totals) plus(d *Totals) {
 	t.CacheUnknownCalls += d.CacheUnknownCalls
 	t.Reasoning += d.Reasoning
 	t.Cost += d.Cost
+	t.PlanCost += d.PlanCost
+	t.PlanAPI += d.PlanAPI
+	t.Planned += d.Planned
 	t.Unpriced += d.Unpriced
 	t.Credits += d.Credits
 	t.Credited += d.Credited

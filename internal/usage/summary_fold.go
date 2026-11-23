@@ -32,6 +32,8 @@ type summaryRun struct {
 	period         Period
 	historicalKeys map[string]bool
 	priceOf        func(Record) *catalog.Price
+	// plans are the providers with a plan's price (plan_week.go)
+	plans map[string]*provider.PlanPrice
 }
 
 func newSummaryRun(p Period, now, first time.Time, historicalKeys map[string]bool) *summaryRun {
@@ -55,6 +57,7 @@ func newSummaryRun(p Period, now, first time.Time, historicalKeys map[string]boo
 	u.since, u.bucket, u.series = timeline(p, now, first)
 	u.period = p.shown()
 	u.priceOf = Pricer()
+	u.plans = planPrices()
 	return u
 }
 
@@ -198,10 +201,12 @@ type summaryCounts struct {
 	totals                                               Totals
 	series                                               []Point
 	agents, models, keys, accounts, callerKeys, sessions groupSet
+	// what each plan's calls ran up in each week, for the plan prices
+	weeks planWeeks
 }
 
 func (u *summaryRun) newCounts() summaryCounts {
-	return summaryCounts{series: slices.Clone(u.series)}
+	return summaryCounts{series: slices.Clone(u.series), weeks: u.seedPlanWeeks()}
 }
 
 func (c *summaryCounts) sets() []*groupSet {
@@ -212,6 +217,7 @@ func (c *summaryCounts) sets() []*groupSet {
 // groups must have been frozen.
 func (c summaryCounts) carried() summaryCounts {
 	c.series = slices.Clone(c.series)
+	c.weeks = maps.Clone(c.weeks)
 	return c
 }
 
@@ -228,18 +234,20 @@ func (c *summaryCounts) add(u *summaryRun, k *summaryKeying, r Record) {
 		return
 	}
 	t := r.Time.In(u.now.Location())
+	pr := u.priceOf(r)
+	// the week's quota counts every call of it the summary reads
+	ps := c.weeks.share(u.plans, r, pr, u.now.Location())
 	if t.Before(u.since) {
 		return
 	}
-	pr := u.priceOf(r)
-	c.totals.add(r, pr)
+	c.totals.addPlan(r, pr, ps)
 	i := bucketIndex(u.bucket, u.since, t)
 	if i >= 0 && i < len(c.series) {
-		c.series[i].add(r, pr)
+		c.series[i].addPlan(r, pr, ps)
 	}
 	id := ReportedAs(r.Agent) // one kept before magpie knew the agent by name
 	a := c.agents.at(id, func() Group { return Group{ID: id} })
-	a.add(r, pr)
+	a.addPlan(r, pr, ps)
 	if r.Time.After(a.Last) {
 		a.Last = r.Time
 	}
@@ -252,29 +260,29 @@ func (c *summaryCounts) add(u *summaryRun, k *summaryKeying, r Record) {
 		key, host = key+" @ "+w, w
 	}
 	m := c.models.at(key, func() Group { return Group{ID: key, Provider: r.Provider, Model: model, Host: host} })
-	m.add(r, pr)
+	m.addPlan(r, pr, ps)
 	m.addOwn(r, pr)
 	if r.CallerKeyID != "" {
 		g := c.callerKeys.at(r.CallerKeyID, func() Group { return Group{ID: r.CallerKeyID, CallerKeyID: r.CallerKeyID} })
 		g.CallerKeyName = r.CallerKeyName
-		g.add(r, pr)
+		g.addPlan(r, pr, ps)
 	}
 	if k.keyProviders[r.Provider] {
 		g := c.keys.at(r.Provider+"#"+r.ProviderKeyID, func() Group {
 			return Group{ID: r.Provider + "#" + r.ProviderKeyID, Provider: r.Provider, ProviderKeyID: r.ProviderKeyID}
 		})
 		g.ProviderKeyName = r.ProviderKeyName
-		g.add(r, pr)
+		g.addPlan(r, pr, ps)
 		g.addOwn(r, pr)
 	}
 	if k.accountProviders[r.Provider] {
 		who := r.Account()
 		g := c.accounts.at(r.Provider+"@"+who, func() Group { return Group{ID: r.Provider + "@" + who, Provider: r.Provider, Account: who} })
-		g.add(r, pr)
+		g.addPlan(r, pr, ps)
 		g.addOwn(r, pr)
 	}
 	if r.Session != "" {
-		c.sessions.at(id+"|"+r.Session, func() Group { return Group{ID: r.Session, Agent: id} }).add(r, pr)
+		c.sessions.at(id+"|"+r.Session, func() Group { return Group{ID: r.Session, Agent: id} }).addPlan(r, pr, ps)
 	}
 }
 

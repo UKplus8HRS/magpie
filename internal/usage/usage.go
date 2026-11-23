@@ -607,6 +607,13 @@ type Totals struct {
 	Reasoning         int     `json:"reasoning"`
 	Cost              float64 `json:"cost"`     // USD at the effective price, for the priced calls
 	Unpriced          int     `json:"unpriced"` // calls with tokens but no known price
+	// PlanCost is what the Planned calls, those of a provider with a plan
+	// (provider.PlanPrice), cost at the plan's equivalent price, PlanAPI
+	// what they cost at the official price (in Cost too): the cost at plan
+	// prices is Cost - PlanAPI + PlanCost (plan_week.go)
+	PlanCost float64 `json:"planCost,omitempty"`
+	PlanAPI  float64 `json:"planAPI,omitempty"`
+	Planned  int     `json:"planned,omitempty"`
 	// Credits are what the vendors said Credited of the calls cost in
 	// their plans' own credits (Record.Credits): the rest said nothing
 	Credits  float64 `json:"credits,omitempty"`
